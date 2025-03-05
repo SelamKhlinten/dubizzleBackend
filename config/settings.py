@@ -28,6 +28,11 @@ EXCHANGE_RATE_API_KEY = os.getenv('EXCHANGE_RATE_API_KEY', 'default_value')
 
 print("Loaded API Key:", EXCHANGE_RATE_API_KEY)  # Debugging output
 
+
+# MEDIA settings
+MEDIA_URL = '/media/'  # URL for accessing media files
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Folder where uploaded files are stored
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
