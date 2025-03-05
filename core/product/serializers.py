@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Product, Category, Favorite
+from decimal import Decimal
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -38,9 +39,6 @@ class ProductSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.image.url)
         return None
 
-
-    
-
     def create(self, validated_data):
         """Automatically set owner & seller before saving"""
         request = self.context.get('request')
@@ -49,14 +47,26 @@ class ProductSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
     def get_converted_price(self, obj):
-        """Convert price dynamically using live exchange rates."""
+        """Return a structured breakdown of the price, including conversion details."""
         request = self.context.get('request')
         target_currency = request.query_params.get('currency', obj.currency)
-        return obj.convert_price(target_currency)
+        
+        original_price = Decimal(obj.price)
+        converted_price = obj.convert_price(target_currency)
+
+        return {
+            "original_price": f"{original_price} {obj.currency}",
+            "converted_price": f"{converted_price} {target_currency}",
+            "exchange_rate": float(converted_price / original_price) if original_price else 1.0
+        }
 
     def get_formatted_price(self, obj):
-        """Return price as a formatted string (e.g., '999.99 ETB')"""
-        return f"{obj.price} {obj.currency}"
+        """Return the original price in a structured format."""
+        return {
+            "amount": obj.price,
+            "currency": obj.currency,
+            "formatted": f"{obj.price} {obj.currency}"
+        }
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
