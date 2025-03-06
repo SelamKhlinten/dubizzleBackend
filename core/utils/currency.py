@@ -9,41 +9,44 @@ logger = logging.getLogger(__name__)  # Use Django logging instead of print stat
 def fetch_live_exchange_rate(target_currency):
     """Fetch real-time exchange rate from API with caching and error handling."""
     if target_currency == "ETB":
-        return Decimal("1.0")  # No conversion needed for base currency
+        return Decimal("1.0")
 
     cache_key = f"exchange_rate_{target_currency}"
     cached_rate = cache.get(cache_key)
 
     if cached_rate:
-        return Decimal(str(cached_rate))  # Return cached value if available
+        logger.info(f"Cache hit for {target_currency}: {cached_rate}")
+        return Decimal(str(cached_rate))
 
-    api_key = settings.EXCHANGE_RATE_API_KEY  # Store API key in settings.py
+    api_key = settings.EXCHANGE_RATE_API_KEY
     base_currency = "ETB"
     url = f"https://v6.exchangerate-api.com/v6/{api_key}/latest/{base_currency}"
 
     try:
-        response = requests.get(url, timeout=5)  # Set timeout to prevent long delays
-        response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
-        data = response.json()
-
-        # Validate response structure
-        if not isinstance(data, dict) or "conversion_rates" not in data:
-            logger.warning("Invalid API response format: %s", data)
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            logger.error(f"Error fetching exchange rate: {response.status_code}, {response.text}")
             return Decimal("1.0")
 
-        # Extract exchange rate safely
+        data = response.json()
+        logger.info(f"API Response: {data}")
+
+        if not isinstance(data, dict) or "conversion_rates" not in data:
+            logger.warning(f"Invalid API response format: {data}")
+            return Decimal("1.0")
+
         conversion_rates = data["conversion_rates"]
         exchange_rate = conversion_rates.get(target_currency)
 
         if exchange_rate is None:
-            logger.warning("Exchange rate for %s not found. Using fallback.", target_currency)
+            logger.warning(f"Exchange rate for {target_currency} not found. Using fallback.")
             return Decimal("1.0")
 
-        # Cache the exchange rate for 6 hours to reduce API calls
+        # Cache the exchange rate for 6 hours
         cache.set(cache_key, exchange_rate, timeout=60 * 60 * 6)
 
         return Decimal(str(exchange_rate))
 
     except requests.exceptions.RequestException as e:
-        logger.error("Request error fetching exchange rate: %s", e)
-        return Decimal("1.0")  # Default to 1.0 if API call fails
+        logger.error(f"Request error fetching exchange rate: {e}")
+        return Decimal("1.0")
