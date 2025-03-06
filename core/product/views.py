@@ -4,14 +4,15 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.viewsets import ModelViewSet
-import django_filters
 from django.core.cache import cache
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Favorite, Product
+from .models import Favorite
 from .serializers import FavoriteSerializer
 from ..user.permissions import IsAdminOrOwner
+from rest_framework import filters
+import django_filters
 
 
 class FavoriteViewSet(viewsets.ModelViewSet):
@@ -90,7 +91,53 @@ class CategoryViewSet(ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['name']
+    search_fields = ['name']
+    ordering_fields = ['name']
 
+
+    def get_queryset(self):
+        queryset = Category.objects.all()
+
+        # Sorting by name (you can adjust it for other fields as needed)
+        sort_by = self.request.query_params.get('sort_by', None)
+        if sort_by:
+            queryset = queryset.order_by(sort_by)
+
+        # Apply filtering if any query parameter is present
+        name = self.request.query_params.get('name', None)
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+
+        return queryset
+
+    # Bulk update example
+    @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    def bulk_update(self, request):
+        ids = request.data.get('ids', [])
+        name = request.data.get('name', None)
+
+        if not ids or not name:
+            return Response({"detail": "Please provide ids and a name to update."}, status=status.HTTP_400_BAD_REQUEST)
+
+        categories = Category.objects.filter(id__in=ids)
+        categories.update(name=name)
+
+        return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
+
+
+    @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAdminUser])
+    def bulk_delete(self, request):
+        ids = request.data.get('ids', [])
+
+        if not ids:
+            return Response({"detail": "Please provide ids to delete."}, status=status.HTTP_400_BAD_REQUEST)
+
+        categories = Category.objects.filter(id__in=ids)
+        categories.delete()
+
+        return Response({"detail": "Categories deleted successfully."}, status=status.HTTP_200_OK)
 
 class MyListingsViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
