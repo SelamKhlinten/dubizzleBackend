@@ -35,6 +35,23 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Folder where uploaded files are 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-xb-xd#pz4(j@3ujbzse8s@c_%_8y9(+2)onpd$xe*!11lsi@e8'
@@ -60,6 +77,9 @@ INSTALLED_APPS = [
     'core.user',
     'core.product',
     'core.utils',
+    'core.cart',
+    'core.chat',
+    'core.notification',
     'django_extensions',
     'django_filters',
     
@@ -101,21 +121,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        # 'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        # 'NAME': 'ecommerce_db',
-        # 'USER': 'ecommerce_user',
-        # 'PASSWORD': '#YBS1234',
-        # 'HOST': 'localhost',
-        # 'PORT': '5432',
         'ENGINE': 'django.db.backends.postgresql',
-
-        'NAME': 'ecommerce_db',
-        'USER': 'ecommerce_user',
-        'PASSWORD': '#kal4648',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'ecommerce_db'),
+        'USER': os.getenv('DB_USER', 'ecommerce_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', '#kal4648'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
+
 
 
 # Password validation
@@ -180,4 +194,3 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'core_user.User'
-
