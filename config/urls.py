@@ -7,6 +7,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/user/', include('core.user.urls')), 
     path('api/product/', include('core.product.urls')),
+    path('api/cart/', include('core.cart.urls')),
+    path('api/chat/', include('core.chat.urls')),
+    path('api/notification/', include('core.notification.urls')),
+
     
 ]
 
