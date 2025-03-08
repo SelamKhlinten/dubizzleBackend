@@ -1,0 +1,7 @@
+django
+djangorestframework
+Pillow
+django-extensions
+
+Django_filter
+
