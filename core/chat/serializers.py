@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Conversation, Chat
+from .models import Conversation, Message
 
 User = get_user_model()
 
@@ -53,7 +53,7 @@ class ChatSerializer(serializers.ModelSerializer):
     receiver = serializers.SerializerMethodField()
 
     class Meta:
-        model = Chat
+        model = Message
         fields = ['id', 'conversation', 'sender', 'receiver', 'content', 'created_at', 'is_read']
 
     def get_receiver(self, obj):
