@@ -1,6 +1,7 @@
 django
 djangorestframework
 Pillow
-Django_Extension
+django-extensions
+
 Django_filter
 
