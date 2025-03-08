@@ -2,7 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.db.models import Q
-from .models import Conversation, Chat
+from .models import Conversation, Message
 from .serializers import ConversationSerializer, ChatSerializer, StartConversationSerializer
 
 class ConversationViewSet(viewsets.ViewSet):
@@ -45,7 +45,7 @@ class ChatViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter messages to only those in conversations involving the user."""
-        return Chat.objects.filter(
+        return Message.objects.filter(
             Q(conversation__sender=self.request.user) | Q(conversation__receiver=self.request.user)
         )
 
@@ -66,9 +66,9 @@ class ChatViewSet(viewsets.ModelViewSet):
         """Mark messages in a conversation as read."""
         user = request.user
         try:
-            chat = Chat.objects.get(id=pk, conversation__in=Conversation.objects.filter(Q(sender=user) | Q(receiver=user)))
+            chat = Message.objects.get(id=pk, conversation__in=Conversation.objects.filter(Q(sender=user) | Q(receiver=user)))
             chat.is_read = True
             chat.save()
             return Response({"message": "Message marked as read."}, status=status.HTTP_200_OK)
-        except Chat.DoesNotExist:
+        except Message.DoesNotExist:
             return Response({"error": "Message not found or access denied."}, status=status.HTTP_404_NOT_FOUND)
