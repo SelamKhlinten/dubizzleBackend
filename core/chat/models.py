@@ -24,7 +24,7 @@ class Conversation(models.Model):
         """Given a sender, return the other participant in the conversation."""
         return self.receiver if sender == self.sender else self.sender if sender == self.receiver else None
 
-class Chat(models.Model):
+class Message(models.Model):
     conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     content = models.TextField()
