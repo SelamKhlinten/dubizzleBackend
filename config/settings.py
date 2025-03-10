@@ -92,6 +92,7 @@ INSTALLED_APPS = [
     'core.notification',
     'django_extensions',
     'django_filters',
+    'gunicorn',
     
 ]
 
