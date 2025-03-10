@@ -57,9 +57,10 @@ LOGGING = {
 SECRET_KEY = 'django-insecure-xb-xd#pz4(j@3ujbzse8s@c_%_8y9(+2)onpd$xe*!11lsi@e8'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['your-app-name.up.railway.app']
+
 
 
 # Application definition
@@ -187,6 +188,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
