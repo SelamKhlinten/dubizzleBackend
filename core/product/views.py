@@ -88,7 +88,6 @@ class ProductViewSet(ModelViewSet):
             raise serializer.ValidationError({"error": "Authentication required to create a product."})
         
 class CategoryViewSet(ModelViewSet):
-    queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
@@ -96,48 +95,51 @@ class CategoryViewSet(ModelViewSet):
     search_fields = ['name']
     ordering_fields = ['name']
 
-
     def get_queryset(self):
         queryset = Category.objects.all()
-
-        # Sorting by name (you can adjust it for other fields as needed)
-        sort_by = self.request.query_params.get('sort_by', None)
-        if sort_by:
+        
+        # Sorting by allowed fields
+        sort_by = self.request.query_params.get('sort_by')
+        if sort_by and sort_by in self.ordering_fields:
             queryset = queryset.order_by(sort_by)
-
-        # Apply filtering if any query parameter is present
-        name = self.request.query_params.get('name', None)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
 
         return queryset
 
-    # Bulk update example
     @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
     def bulk_update(self, request):
+        """
+        Bulk update categories by IDs.
+        Example payload: {"ids": [1, 2, 3], "name": "New Name"}
+        """
         ids = request.data.get('ids', [])
-        name = request.data.get('name', None)
+        name = request.data.get('name')
 
         if not ids or not name:
             return Response({"detail": "Please provide ids and a name to update."}, status=status.HTTP_400_BAD_REQUEST)
 
         categories = Category.objects.filter(id__in=ids)
+        if not categories.exists():
+            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
+
         categories.update(name=name)
-
         return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
-
 
     @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAdminUser])
     def bulk_delete(self, request):
+        """
+        Bulk delete categories by IDs.
+        Example payload: {"ids": [1, 2, 3]}
+        """
         ids = request.data.get('ids', [])
 
         if not ids:
             return Response({"detail": "Please provide ids to delete."}, status=status.HTTP_400_BAD_REQUEST)
 
-        categories = Category.objects.filter(id__in=ids)
-        categories.delete()
+        deleted_count, _ = Category.objects.filter(id__in=ids).delete()
+        if deleted_count == 0:
+            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response({"detail": "Categories deleted successfully."}, status=status.HTTP_200_OK)
+        return Response({"detail": f"{deleted_count} Categories deleted successfully."}, status=status.HTTP_200_OK)
 
 class MyListingsViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
