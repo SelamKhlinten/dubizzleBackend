@@ -20,9 +20,9 @@ import environ
 env = environ.Env()
 environ.Env.read_env()  # Reads the .env file
 
-# Use the environment variables
+# Database configuration
 DATABASES = {
-    'default': env.db('DATABASE_URL', default='postgres://localhost:5432/ecommerce_db')
+    'default': env.db('DATABASE_URL', default='postgresql://localhost:5432/ecommerce_db')
 }
 
 
