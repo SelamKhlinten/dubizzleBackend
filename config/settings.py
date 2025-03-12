@@ -16,12 +16,15 @@ import os
 from dotenv import load_dotenv
 import environ
 
+# Initialize environment variables
 env = environ.Env()
-environ.Env.read_env()
+environ.Env.read_env()  # Reads the .env file
 
+# Use the environment variables
 DATABASES = {
-    'default': env.db('DATABASE_URL')  # This fetches the DATABASE_URL from environment variables
+    'default': env.db('DATABASE_URL', default='postgres://localhost:5432/ecommerce_db')
 }
+
 
 # Get the base directory (parent of the current file's directory)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -68,7 +71,7 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['your-app-name.up.railway.app']
+ALLOWED_HOSTS = ['YBS_ecommerce.up.railway.app','127.0.0.1']
 
 
 
@@ -129,17 +132,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('DB_NAME', 'ecommerce_db'),
-#         'USER': os.getenv('DB_USER', 'ecommerce_user'),
-#         'PASSWORD': os.getenv('DB_PASSWORD', '#kal4648'),
-#         'HOST': os.getenv('DB_HOST', 'localhost'),
-#         'PORT': os.getenv('DB_PORT', '5432'),
-#     }
-# }
 
 
 
