@@ -104,7 +104,6 @@ class ProductSerializer(serializers.ModelSerializer):
             "formatted": f"{float(obj.price):.2f} {obj.currency}"
         }
 
-
 class FavoriteSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)  # Show full product details
     product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True)
