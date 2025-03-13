@@ -15,15 +15,16 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Load environment variabl
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 
 # Debug mode
-DEBUG = False
+DEBUG = True
 
 # Allowed hosts
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1'])
+# ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1'])
+ALLOWED_HOSTS = []
 
 # Database configuration (Using DATABASE_URL)
-DATABASES = {
-    'default': dj_database_url.config(default=env('DATABASE_URL'))
-}
+# DATABASES = {
+#     'default': dj_database_url.config(default=env('DATABASE_URL'))
+# }
 
 # Static files
 STATIC_URL = 'static/'
@@ -96,6 +97,16 @@ TEMPLATES = [
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'ecommerce_db',  # This is the incorrect database name
+        'USER': 'ecommerce_user',
+        'PASSWORD': '#kal4648',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
 
 
