@@ -105,6 +105,13 @@ class CategoryViewSet(ModelViewSet):
 
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        """
+        Override the create method to handle POST requests for creating a new category.
+        This method is optional as ModelViewSet already supports POST.
+        """
+        return super().create(request, *args, **kwargs)
+    
     @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
     def bulk_update(self, request):
         """
