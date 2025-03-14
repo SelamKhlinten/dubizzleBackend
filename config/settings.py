@@ -12,7 +12,8 @@ env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Load environment variables from .env file
 
 # Secret key
-SECRET_KEY = env('DJANGO_SECRET_KEY')
+# SECRET_KEY = env('DJANGO_SECRET_KEY')
+SECRET_KEY = 'django-insecure-xb-xd#pz4(j@3ujbzse8s@c_%_8y9(+2)onpd$xe*!11lsi@e8'
 
 # Debug mode
 DEBUG = True
