@@ -4,30 +4,33 @@ from decimal import Decimal, ROUND_DOWN
 from django.conf import settings
 
 class CategorySerializer(serializers.ModelSerializer):
-    
-    icon_url = serializers.SerializerMethodField()
-    image_url = serializers.SerializerMethodField()
-
     icon_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "icon", "image", "icon_url", "image_url"]
+        fields = '__all__'
 
     def get_icon_url(self, obj):
         request = self.context.get('request')
-        if obj.icon:
+        if obj.icon and request is not None:
             return request.build_absolute_uri(obj.icon.url)
         return None
 
     def get_image_url(self, obj):
         request = self.context.get('request')
-        if obj.image:
+        if obj.image and request is not None:
             return request.build_absolute_uri(obj.image.url)
         return None
+
+    def validate_icon(self, value):
+        allowed_extensions = [".png", ".jpg", ".jpeg"]
+        if not any(value.name.endswith(ext) for ext in allowed_extensions):
+            raise serializers.ValidationError("Only PNG, JPG, and JPEG files are allowed.")
+        return value
     
 class ProductSerializer(serializers.ModelSerializer):
+
     seller_name = serializers.CharField(source='seller.first_name', read_only=True)  # Display seller name
     category = CategorySerializer(read_only=True)  # Nested category details
     category_id = serializers.PrimaryKeyRelatedField(
