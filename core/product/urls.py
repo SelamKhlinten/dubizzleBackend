@@ -4,7 +4,8 @@ from .views import ProductViewSet, CategoryViewSet, FavoriteViewSet, MyListingsV
 
 router = DefaultRouter()
 router.register(r'', ProductViewSet, basename='product')  
-router.register('categories', CategoryViewSet, basename='category')  
+router.register(r'categories', CategoryViewSet, basename='category')
+
 router.register('favorites', FavoriteViewSet, basename='favorite')
 router.register('my-listings', MyListingsViewSet, basename='my-listings')
 
