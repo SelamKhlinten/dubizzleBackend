@@ -20,7 +20,9 @@ DEBUG = True
 
 # Allowed hosts
 # ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1'])
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ['*']  # For development purposes (allow all)
+
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
 
 # Database configuration (Using DATABASE_URL)
 # DATABASES = {
@@ -61,6 +63,7 @@ INSTALLED_APPS = [
     'django_filters',
     'gunicorn',
 ]
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000']
 
 # Middleware
 MIDDLEWARE = [
@@ -71,12 +74,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware', 
+
 ]
 
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
-
 
 
 TEMPLATES = [
@@ -139,6 +143,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # <- Allow any request temporarily for debugging
+    ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
