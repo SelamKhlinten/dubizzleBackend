@@ -13,7 +13,81 @@ from .serializers import FavoriteSerializer
 from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+    
+    # http_method_names = ['get', 'post', 'put', 'patch', 'delete']
+
+    filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['name']
+    search_fields = ['name']
+    ordering_fields = ['name']
+
+    def get_serializer_context(self):
+        return {"request": self.request}  # Ensures URLs are generated correctly
+
+    def get_queryset(self):
+        """
+        Returns categories with caching and optional sorting.
+        """
+        if self.action in ["list", "retrieve"]:  # Only use caching for GET requests
+            sort_by = self.request.query_params.get('sort_by', None)
+            # categories = cache.get("categories")
+
+            # if categories is None:  
+            #     categories = list(Category.objects.all())  # Ensure list format
+            #     cache.set("categories", categories, timeout=60 * 5)
+
+            if sort_by:
+                try:
+                    categories = sorted(categories, key=lambda x: getattr(x, sort_by))
+                except AttributeError:
+                    return Category.objects.all()  # Fallback to DB query if sorting fails
+
+            return Category.objects.filter(id__in=[c.id for c in categories])  # Return as queryset
+
+        return Category.objects.all()  # Default queryset for non-list actions
+
+    @action(detail=False, methods=['patch'], permission_classes=[IsAdminUser])
+    def bulk_update(self, request):
+        """
+        Updates multiple categories at once.
+        """
+        ids = request.data.get('ids', [])
+        name = request.data.get('name')
+
+        if not ids or not name:
+            return Response({"detail": "Please provide valid IDs and a name."}, status=status.HTTP_400_BAD_REQUEST)
+
+        categories = Category.objects.filter(id__in=ids)
+        if not categories.exists():
+            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
+
+        categories.update(name=name)
+        return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['delete'], permission_classes=[IsAdminUser])
+    def bulk_delete(self, request):
+        """
+        Deletes multiple categories at once.
+        """
+        ids = request.data.get('ids', [])
+
+        if not ids:
+            return Response({"detail": "Please provide IDs to delete."}, status=status.HTTP_400_BAD_REQUEST)
+
+        deleted_count, _ = Category.objects.filter(id__in=ids).delete()
+        if deleted_count == 0:
+            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({"detail": f"{deleted_count} categories deleted successfully."}, status=status.HTTP_200_OK)
+
 
 
 class FavoriteViewSet(viewsets.ModelViewSet):
@@ -87,69 +161,8 @@ class ProductViewSet(ModelViewSet):
             serializer.save(seller=self.request.user, owner=self.request.user)
         else:
             raise serializer.ValidationError({"error": "Authentication required to create a product."})
-        
-class CategoryViewSet(ModelViewSet):
-    
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['name']
-    search_fields = ['name']
-    ordering_fields = ['name']
 
-    def get_queryset(self):
-        queryset = Category.objects.all()
-        
-        # Sorting by allowed fields
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by and sort_by in self.ordering_fields:
-            queryset = queryset.order_by(sort_by)
 
-        return queryset
-    
-
-    def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs) 
-    
-    
-    
-   
-    @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
-    def bulk_update(self, request):
-        """
-        Bulk update categories by IDs.
-        Example payload: {"ids": [1, 2, 3], "name": "New Name"}
-        """
-        ids = request.data.get('ids', [])
-        name = request.data.get('name')
-
-        if not ids or not name:
-            return Response({"detail": "Please provide ids and a name to update."}, status=status.HTTP_400_BAD_REQUEST)
-
-        categories = Category.objects.filter(id__in=ids)
-        if not categories.exists():
-            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
-
-        categories.update(name=name)
-        return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAdminUser])
-    def bulk_delete(self, request):
-        """
-        Bulk delete categories by IDs.
-        Example payload: {"ids": [1, 2, 3]}
-        """
-        ids = request.data.get('ids', [])
-
-        if not ids:
-            return Response({"detail": "Please provide ids to delete."}, status=status.HTTP_400_BAD_REQUEST)
-
-        deleted_count, _ = Category.objects.filter(id__in=ids).delete()
-        if deleted_count == 0:
-            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
-
-        return Response({"detail": f"{deleted_count} Categories deleted successfully."}, status=status.HTTP_200_OK)
 
 class MyListingsViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
