@@ -14,5 +14,11 @@ venv/
 .vscode/
 .idea/
 
+# Ignore media files
+media/
+
 # Ignore image files in product_images folder (example)
 product_images/*.jpg
+
+# Ignore static files
+staticfiles/
