@@ -18,11 +18,18 @@ User = get_user_model()
 
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    icon = models.ImageField(upload_to='category_icons/', null=True, blank=True)
-    image = models.ImageField(upload_to='category_images/', null=True, blank=True)
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="subcategories"
+    )
+    icon = models.ImageField(upload_to="category_icons/", null=True, blank=True)
+    image = models.ImageField(upload_to="category_images/", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ["name"]  
 
 class Product(models.Model):
     title = models.CharField(max_length=255)
@@ -37,9 +44,9 @@ class Product(models.Model):
         ],
         default='ETB'
     )
-    category = models.ForeignKey(
-        'Category', on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
-    )
+    # category = models.ForeignKey(
+    #     'Category', on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
+    # )
     seller = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="products_sold"
     )

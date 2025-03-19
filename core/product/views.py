@@ -17,76 +17,87 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
+
 class CategoryViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing categories, supporting CRUD operations,
+    search, filtering, ordering, and bulk operations.
+    """
+    
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.IsAuthenticated]
-    
-    # http_method_names = ['get', 'post', 'put', 'patch', 'delete']
-
-    filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['name']
-    search_fields = ['name']
-    ordering_fields = ['name']
-
-    def get_serializer_context(self):
-        return {"request": self.request}  # Ensures URLs are generated correctly
+    permission_classes = [permissions.IsAuthenticated]  # Allow only authenticated users to create categories
 
     def get_queryset(self):
-        """
-        Returns categories with caching and optional sorting.
-        """
-        if self.action in ["list", "retrieve"]:  # Only use caching for GET requests
-            sort_by = self.request.query_params.get('sort_by', None)
-            # categories = cache.get("categories")
+        return Category.objects.all()
 
-            # if categories is None:  
-            #     categories = list(Category.objects.all())  # Ensure list format
-            #     cache.set("categories", categories, timeout=60 * 5)
+    def perform_create(self, serializer):
+        serializer.save()  # This ensures the creation of the object
 
-            if sort_by:
-                try:
-                    categories = sorted(categories, key=lambda x: getattr(x, sort_by))
-                except AttributeError:
-                    return Category.objects.all()  # Fallback to DB query if sorting fails
 
-            return Category.objects.filter(id__in=[c.id for c in categories])  # Return as queryset
 
-        return Category.objects.all()  # Default queryset for non-list actions
 
-    @action(detail=False, methods=['patch'], permission_classes=[IsAdminUser])
-    def bulk_update(self, request):
-        """
-        Updates multiple categories at once.
-        """
-        ids = request.data.get('ids', [])
-        name = request.data.get('name')
+    # queryset = Category.objects.all()
+    # serializer_class = CategorySerializer
+    # permission_classes = [permissions.IsAuthenticated]  # Modify as needed (e.g., IsAuthenticated)
 
-        if not ids or not name:
-            return Response({"detail": "Please provide valid IDs and a name."}, status=status.HTTP_400_BAD_REQUEST)
+    # filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
+    # filterset_fields = ['parent']
+    # search_fields = ['name']
+    # ordering_fields = ['name', 'created_at']
 
-        categories = Category.objects.filter(id__in=ids)
-        if not categories.exists():
-            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
+    # def get_serializer_context(self):
+    #     """Ensures image URLs are generated correctly."""
+    #     return {"request": self.request}
 
-        categories.update(name=name)
-        return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
+    # def get_queryset(self):
+    #     """
+    #     Returns categories with optional sorting.
+    #     """
+    #     queryset = Category.objects.all()
+    #     sort_by = self.request.query_params.get("sort_by")
 
-    @action(detail=False, methods=['delete'], permission_classes=[IsAdminUser])
-    def bulk_delete(self, request):
-        """
-        Deletes multiple categories at once.
-        """
-        ids = request.data.get('ids', [])
+    #     if sort_by and hasattr(Category, sort_by):
+    #         queryset = queryset.order_by(sort_by)
 
-        if not ids:
-            return Response({"detail": "Please provide IDs to delete."}, status=status.HTTP_400_BAD_REQUEST)
+    #     return queryset
 
-        deleted_count, _ = Category.objects.filter(id__in=ids).delete()
-        if deleted_count == 0:
-            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
+    # @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    # def bulk_update(self, request):
+    #     """
+    #     Updates multiple categories at once.
+    #     """
+    #     ids = request.data.get('ids', [])
+    #     update_fields = request.data.get('update_fields', {})
 
-        return Response({"detail": f"{deleted_count} categories deleted successfully."}, status=status.HTTP_200_OK)
+    #     if not ids or not update_fields:
+    #         return Response({"detail": "Provide valid IDs and update fields."}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     categories = Category.objects.filter(id__in=ids)
+    #     if not categories.exists():
+    #         return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
+
+    #     categories.update(**update_fields)  # Bulk update
+
+    #     return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
+
+    # @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAdminUser])
+    # def bulk_delete(self, request):
+    #     """
+    #     Deletes multiple categories at once.
+    #     """
+    #     ids = request.data.get('ids', [])
+
+    #     if not ids:
+    #         return Response({"detail": "Please provide category IDs to delete."}, status=status.HTTP_400_BAD_REQUEST)
+
+    #     categories_to_delete = Category.objects.filter(id__in=ids)
+    #     deleted_count, _ = categories_to_delete.delete()
+
+    #     if deleted_count == 0:
+    #         return Response({"detail": "No categories found to delete."}, status=status.HTTP_404_NOT_FOUND)
+
+    #     return Response({"detail": f"{deleted_count} categories deleted successfully."}, status=status.HTTP_200_OK)
 
 
 

@@ -9,7 +9,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Initialize environment variables
 env = environ.Env()
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  # Load environment variables from .env file
+
+# Load environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))  
+
+# Now access the environment variable
+EXCHANGE_RATE_API_KEY = env('EXCHANGE_RATE_API_KEY')
+
+# Print to check if the key is loaded correctly
+print("Exchange Rate API Key:", EXCHANGE_RATE_API_KEY)
 
 # Secret key
 # SECRET_KEY = env('DJANGO_SECRET_KEY')
@@ -34,8 +42,7 @@ STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# API Key
-EXCHANGE_RATE_API_KEY = env('EXCHANGE_RATE_API_KEY')
+
 
 # Media files
 MEDIA_URL = '/media/'

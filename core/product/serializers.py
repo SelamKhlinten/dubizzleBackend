@@ -1,41 +1,63 @@
 from rest_framework import serializers
-from .models import Product, Category, Favorite
+from .models import Product, Favorite, Category 
 from decimal import Decimal, ROUND_DOWN
 from django.conf import settings
+
 
 class CategorySerializer(serializers.ModelSerializer):
     icon_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    subcategories = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = [
+            "id", "name", "parent", "icon", "icon_url", 
+            "image", "image_url", "created_at", "subcategories"
+        ]
 
     def get_icon_url(self, obj):
-        request = self.context.get('request')
+        """Return absolute URL for icon image"""
+        request = self.context.get("request")
         if obj.icon and request is not None:
             return request.build_absolute_uri(obj.icon.url)
         return None
 
     def get_image_url(self, obj):
-        request = self.context.get('request')
+        """Return absolute URL for image"""
+        request = self.context.get("request")
         if obj.image and request is not None:
             return request.build_absolute_uri(obj.image.url)
         return None
 
+    def get_subcategories(self, obj):
+        """Fetch all subcategories under this category"""
+        return CategorySerializer(obj.subcategories.all(), many=True).data
+
     def validate_icon(self, value):
-        allowed_extensions = [".png", ".jpg", ".jpeg"]
-        if not any(value.name.endswith(ext) for ext in allowed_extensions):
-            raise serializers.ValidationError("Only PNG, JPG, and JPEG files are allowed.")
+        """Validate icon file format"""
+        if value:
+            allowed_extensions = [".png", ".jpg", ".jpeg"]
+            if not any(value.name.lower().endswith(ext) for ext in allowed_extensions):
+                raise serializers.ValidationError("Only PNG, JPG, and JPEG files are allowed.")
         return value
+
+    def validate_image(self, value):
+        """Validate image file format (same as icon)"""
+        if value:
+            allowed_extensions = [".png", ".jpg", ".jpeg"]
+            if not any(value.name.lower().endswith(ext) for ext in allowed_extensions):
+                raise serializers.ValidationError("Only PNG, JPG, and JPEG files are allowed.")
+        return value
+
     
 class ProductSerializer(serializers.ModelSerializer):
 
     seller_name = serializers.CharField(source='seller.first_name', read_only=True)  # Display seller name
-    category = CategorySerializer(read_only=True)  # Nested category details
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(), source='category', write_only=True
-    )  # Allow setting category by ID
+    # category = CategorySerializer(read_only=True)  # Nested category details
+    # category_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=Category.objects.all(), source='category', write_only=True
+    # )  # Allow setting category by ID
     image_url = serializers.SerializerMethodField()  # Handle image URLs properly
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)  # Formatted timestamp
     formatted_price = serializers.SerializerMethodField()  # Format price as "999.99 ETB"
@@ -46,8 +68,9 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'title', 'description', 'price', 'formatted_price', 'converted_price', 'currency',
-            'seller_name', 'category', 'category_id', 'image', 'image_url', 'created_at'
-        ]
+            'seller_name', 'image', 'image_url', 'created_at'
+        ]  
+        #  'category', 'category_id',
         read_only_fields = ['seller_name', 'created_at', 'formatted_price', 'converted_price']
 
     def get_image_url(self, obj):
