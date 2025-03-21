@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Product, Favorite, Category 
+from .models import Product, Favorite, Category, City
 from decimal import Decimal, ROUND_DOWN
 from django.conf import settings
 
@@ -50,14 +50,27 @@ class CategorySerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Only PNG, JPG, and JPEG files are allowed.")
         return value
 
+
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ['id', 'name', 'region']
+
+
     
 class ProductSerializer(serializers.ModelSerializer):
 
     seller_name = serializers.CharField(source='seller.first_name', read_only=True)  # Display seller name
-    # category = CategorySerializer(read_only=True)  # Nested category details
-    # category_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=Category.objects.all(), source='category', write_only=True
-    # )  # Allow setting category by ID
+    category = CategorySerializer(read_only=True)  # Nested category details
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source='category', write_only=True
+    )  # Allow setting category by ID
+    city = CitySerializer(read_only=True)  # Show city details
+    city_id = serializers.PrimaryKeyRelatedField(
+        queryset=City.objects.all(), source='city', write_only=True
+    )  # Allow selecting city by ID
+
     image_url = serializers.SerializerMethodField()  # Handle image URLs properly
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)  # Formatted timestamp
     formatted_price = serializers.SerializerMethodField()  # Format price as "999.99 ETB"
@@ -68,9 +81,9 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'title', 'description', 'price', 'formatted_price', 'converted_price', 'currency',
-            'seller_name', 'image', 'image_url', 'created_at'
+            'category', 'category_id','city', 'city_id','seller_name', 'image', 'image_url', 'created_at'
         ]  
-        #  'category', 'category_id',
+        
         read_only_fields = ['seller_name', 'created_at', 'formatted_price', 'converted_price']
 
     def get_image_url(self, obj):
