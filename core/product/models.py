@@ -16,6 +16,14 @@ logger.addHandler(console_handler)
 
 User = get_user_model()
 
+class City(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    region = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
     parent = models.ForeignKey(
@@ -34,6 +42,8 @@ class Category(models.Model):
 class Product(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
+    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, blank=True, related_name="products")
+
     price = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(
         max_length=3,
@@ -44,9 +54,9 @@ class Product(models.Model):
         ],
         default='ETB'
     )
-    # category = models.ForeignKey(
-    #     'Category', on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
-    # )
+    category = models.ForeignKey(
+        'Category', on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
+    )
     seller = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="products_sold"
     )
@@ -88,5 +98,5 @@ class Favorite(models.Model):
         unique_together = ('user', 'product')  # Prevent duplicate favorites
 
     def __str__(self):
-        return f"{self.user.username} favorited {self.product.name}"
+        return f"{self.user.username} favorited {self.product.title}"
 
