@@ -1,5 +1,5 @@
-from .models import Product, Category
-from .serializers import ProductSerializer, CategorySerializer
+from .models import Product, Category, City, Favorite
+from .serializers import ProductSerializer, CategorySerializer, FavoriteSerializer, CitySerializer
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
@@ -8,8 +8,6 @@ from django.core.cache import cache
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Favorite
-from .serializers import FavoriteSerializer
 from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
@@ -17,6 +15,25 @@ from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """Custom permission to allow only admin users to create/edit cities."""
+
+    def has_permission(self, request, view):
+        # Read permissions for everyone (GET)
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # Write permissions (POST, PUT, DELETE) only for admin users
+        return request.user and request.user.is_staff
+
+class CityViewSet(viewsets.ModelViewSet):
+    queryset = City.objects.all()
+    serializer_class = CitySerializer
+    permission_classes = [IsAdminOrReadOnly]
+    http_method_names = ['get']  # Only allow GET requests (no create/update/delete)
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['city']
+    
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """
