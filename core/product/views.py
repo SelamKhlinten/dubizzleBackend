@@ -32,7 +32,8 @@ class CityViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     http_method_names = ['get']  # Only allow GET requests (no create/update/delete)
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['city']
+    filterset_fields = ['name', 'region']
+
     
 
 class CategoryViewSet(viewsets.ModelViewSet):
