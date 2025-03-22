@@ -55,12 +55,12 @@ class CategorySerializer(serializers.ModelSerializer):
 class CitySerializer(serializers.ModelSerializer):
     class Meta:
         model = City
-        fields = ['id', 'name', 'region']
+        fields = ['id','name', 'region']
 
 
     
 class ProductSerializer(serializers.ModelSerializer):
-
+    
     seller_name = serializers.CharField(source='seller.first_name', read_only=True)  # Display seller name
     category = CategorySerializer(read_only=True)  # Nested category details
     category_id = serializers.PrimaryKeyRelatedField(
