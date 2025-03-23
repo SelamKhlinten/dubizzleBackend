@@ -34,7 +34,6 @@ class CityViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name', 'region']
 
-    
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """
@@ -111,8 +110,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
         return Response({"detail": f"{deleted_count} categories deleted successfully."}, status=status.HTTP_200_OK)
 
 
-
-
 class FavoriteViewSet(viewsets.ModelViewSet):
     serializer_class = FavoriteSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -158,9 +155,8 @@ class ProductPagination(PageNumberPagination):
 class ProductViewSet(ModelViewSet):
     
     queryset = Product.objects.select_related('category').prefetch_related('images').all()
-
     serializer_class = ProductSerializer
-    permission_classes = [IsOwner | permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]  # For general authentication
     pagination_class = ProductPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_class = ProductFilter
@@ -175,17 +171,28 @@ class ProductViewSet(ModelViewSet):
     def get_queryset(self):
         products = cache.get("products")
         if not products:
-            products = Product.objects.all()
-            cache.set("products", products, timeout=60 * 5)  # Cache for 5 minutes
-        return products
-    
+            products = Product.objects.all()  # ✅ Don't convert to list
+            cache.set("products", products, timeout=60 * 5)
+        return products  # ✅ Return QuerySet, not a list
+
+
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             serializer.save(seller=self.request.user, owner=self.request.user)
+            cache.delete("products")  # Invalidate cache after creation
         else:
             raise serializer.ValidationError({"error": "Authentication required to create a product."})
 
+    def perform_update(self, serializer):
+        if self.request.user == serializer.instance.owner:
+            serializer.save()
+            cache.delete("products")  # Invalidate cache after update
+        else:
+            raise serializer.ValidationError({"error": "You are not the owner of this product."})
 
+    def perform_destroy(self, instance):
+        instance.delete()
+        cache.delete("products")  # Invalidate cache after deletion
 
 class MyListingsViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
