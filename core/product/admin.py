@@ -16,4 +16,4 @@ class CityAdmin(admin.ModelAdmin):
 
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(City, CityAdmin)  # Register the City model
-# admin.site.register(Product, ProductAdmin)  # Register the Product model
+# admin.site.register(Product, ProductAdmin)  # Register the Product models
