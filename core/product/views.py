@@ -12,8 +12,7 @@ from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
 from rest_framework.permissions import AllowAny, IsAdminUser
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.exceptions import ValidationError, PermissionDenied
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -118,10 +117,16 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         return Favorite.objects.filter(user=self.request.user)  #Only return user’s favorites
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        favorite = serializer.save()
-        return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
+        # Check if the product is already in favorites
+        product_id = request.data.get('product')
+        if Favorite.objects.filter(user=request.user, product_id=product_id).exists():
+            raise ValidationError("This product is already in your favorites.")
+        # Proceed to create the favorite
+        return super().create(request, *args, **kwargs)
+        # serializer = self.get_serializer(data=request.data, context={'request': request})
+        # serializer.is_valid(raise_exception=True)
+        # favorite = serializer.save()
+        # return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['DELETE'])
     def remove(self, request, pk=None):
