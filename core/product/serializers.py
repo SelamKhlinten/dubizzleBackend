@@ -57,7 +57,6 @@ class CitySerializer(serializers.ModelSerializer):
         model = City
         fields = ['id','name', 'region']
 
-
     
 class ProductSerializer(serializers.ModelSerializer):
     
@@ -143,6 +142,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "formatted": f"{float(obj.price):.2f} {obj.currency}"
         }
 
+
 class FavoriteSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)  # Show full product details
     product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True)
@@ -157,4 +157,6 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
         # Check if favorite already exists
         favorite, created = Favorite.objects.get_or_create(user=user, product=product)
-        return favorite
+
+        # Return the serialized favorite object
+        return FavoriteSerializer(favorite, context=self.context).data
