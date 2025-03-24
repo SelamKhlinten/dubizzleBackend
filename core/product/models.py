@@ -98,5 +98,5 @@ class Favorite(models.Model):
         unique_together = ('user', 'product')  # Prevent duplicate favorites
 
     def __str__(self):
-        return f"{self.user.username} favorited {self.product.title}"
+        return f"{self.user.email} favorited {self.product.title}"
 
