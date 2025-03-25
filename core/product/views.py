@@ -117,16 +117,20 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         return Favorite.objects.filter(user=self.request.user)  #Only return user’s favorites
 
     def create(self, request, *args, **kwargs):
-        # Check if the product is already in favorites
-        product_id = request.data.get('product')
+        product_id = request.data.get('product_id')  # Make sure the key matches
+
+        if not product_id:
+            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Prevent duplicate favorites
         if Favorite.objects.filter(user=request.user, product_id=product_id).exists():
-            raise ValidationError("This product is already in your favorites.")
-        # Proceed to create the favorite
-        return super().create(request, *args, **kwargs)
-        # serializer = self.get_serializer(data=request.data, context={'request': request})
-        # serializer.is_valid(raise_exception=True)
-        # favorite = serializer.save()
-        # return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
+            return Response({"error": "Product already favorited"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data={"user": request.user.id, "product": product_id})
+        serializer.is_valid(raise_exception=True)
+        favorite = serializer.save()
+        return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
+    
 
     @action(detail=True, methods=['DELETE'])
     def remove(self, request, pk=None):
