@@ -144,19 +144,24 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)  # Show full product details
-    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True)
-
     class Meta:
         model = Favorite
-        fields = ['id', 'product', 'product_id', 'created_at']
+        fields = ['id', 'user', 'product', 'created_at']
+        extra_kwargs = {'user': {'read_only': True}}
 
     def create(self, validated_data):
         user = self.context['request'].user
-        product = validated_data['product_id']
+        product_id = validated_data.get('product_id')  # Use 'product_id' instead of 'product'
 
-        # Check if favorite already exists
-        favorite, created = Favorite.objects.get_or_create(user=user, product=product)
+        # Ensure product exists
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product does not exist.")
 
-        # Return the serialized favorite object
-        return FavoriteSerializer(favorite, context=self.context).data
+        # Check for duplicate favorites
+        if Favorite.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("You have already favorited this product.")
+
+        # Create and return the Favorite instance
+        return Favorite.objects.create(user=user, product=product)
