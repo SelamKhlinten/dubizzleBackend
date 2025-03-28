@@ -2,6 +2,39 @@ from rest_framework import serializers
 from .models import Product, Favorite, Category, City
 from decimal import Decimal, ROUND_DOWN
 from django.conf import settings
+import logging
+logger = logging.getLogger(__name__)
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(write_only=True, required=True)  # Ensure it's required and defined properly
+
+    class Meta:
+        model = Favorite
+        fields = ['id', 'user', 'product', 'product_id', 'created_at']
+        extra_kwargs = {'user': {'read_only': True}}
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        product_id = validated_data.get('product_id')  # Extract product_id properly
+
+        logger.debug(f"Product ID: {product_id}")  # Log product_id
+
+        if not product_id:
+            raise serializers.ValidationError("Product ID is required.")
+
+        # Ensure the Product instance exists
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            logger.error(f"Product {product_id} does not exist.")
+            raise serializers.ValidationError("Product does not exist.")
+
+        # Prevent duplicate favorites
+        if Favorite.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("You have already favorited this product.")
+
+        return Favorite.objects.create(user=user, product=product)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -143,25 +176,3 @@ class ProductSerializer(serializers.ModelSerializer):
         }
 
 
-class FavoriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Favorite
-        fields = ['id', 'user', 'product', 'created_at']
-        extra_kwargs = {'user': {'read_only': True}}
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        product_id = validated_data.get('product_id')  # Use 'product_id' instead of 'product'
-
-        # Ensure product exists
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            raise serializers.ValidationError("Product does not exist.")
-
-        # Check for duplicate favorites
-        if Favorite.objects.filter(user=user, product=product).exists():
-            raise serializers.ValidationError("You have already favorited this product.")
-
-        # Create and return the Favorite instance
-        return Favorite.objects.create(user=user, product=product)
