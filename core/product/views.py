@@ -110,8 +110,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 class FavoriteViewSet(viewsets.ModelViewSet):
+    queryset = Favorite.objects.all()
     serializer_class = FavoriteSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         return Favorite.objects.filter(user=self.request.user)  #Only return user’s favorites
