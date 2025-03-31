@@ -11,7 +11,7 @@ from rest_framework.decorators import action
 from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 
@@ -113,13 +113,11 @@ class FavoriteViewSet(viewsets.ModelViewSet):
     queryset = Favorite.objects.all()
     serializer_class = FavoriteSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post', 'delete', 'head', 'options']
-
+    
     def get_queryset(self):
         return Favorite.objects.filter(user=self.request.user)  #Only return user’s favorites
-
     def create(self, request, *args, **kwargs):
-        product_id = request.data.get('product_id')  # Make sure the key matches
+        product_id = request.data.get('product_id')
 
         if not product_id:
             return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -133,7 +131,6 @@ class FavoriteViewSet(viewsets.ModelViewSet):
         favorite = serializer.save()
         return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
     
-
     @action(detail=True, methods=['DELETE'])
     def remove(self, request, pk=None):
         """Custom endpoint to remove a product from favorites"""
