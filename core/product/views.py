@@ -11,6 +11,8 @@ from rest_framework.decorators import action
 from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
+from rest_framework import serializers
+
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
@@ -113,23 +115,42 @@ class FavoriteViewSet(viewsets.ModelViewSet):
     queryset = Favorite.objects.all()
     serializer_class = FavoriteSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['product']
+    search_fields = ['product__name']
+    ordering_fields = ['created_at']
+
+    def get_serializer_context(self):
+        return {"request": self.request}  # Ensures URLs are generated correctly
+
     def get_queryset(self):
-        return Favorite.objects.filter(user=self.request.user)  #Only return user’s favorites
-    def create(self, request, *args, **kwargs):
-        product_id = request.data.get('product_id')
+        """
+        Returns only the authenticated user's favorites.
+        """
+        return Favorite.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        """
+        Handles creation of a favorite product, preventing duplicates.
+        """
+        product_id = self.request.data.get('product_id')
 
         if not product_id:
-            return Response({"error": "Product ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+            raise serializers.ValidationError({"error": "Product ID is required."})
+
+        # Ensure product exists
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError({"error": "Product does not exist."})
 
         # Prevent duplicate favorites
-        if Favorite.objects.filter(user=request.user, product_id=product_id).exists():
-            return Response({"error": "Product already favorited"}, status=status.HTTP_400_BAD_REQUEST)
+        if Favorite.objects.filter(user=self.request.user, product=product).exists():
+            raise serializers.ValidationError({"error": "Product already favorited."})
 
-        serializer = self.get_serializer(data={"user": request.user.id, "product": product_id})
-        serializer.is_valid(raise_exception=True)
-        favorite = serializer.save()
-        return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
+        serializer.save(user=self.request.user, product=product)
     
     @action(detail=True, methods=['DELETE'])
     def remove(self, request, pk=None):
