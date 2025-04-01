@@ -33,7 +33,7 @@ class FavoriteSerializer(serializers.ModelSerializer):
         # Prevent duplicate favorites
         if Favorite.objects.filter(user=user, product=product).exists():
             raise serializers.ValidationError("You have already favorited this product.")
-
+        
         return Favorite.objects.create(user=user, product=product)
 
 
