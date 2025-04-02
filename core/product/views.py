@@ -3,7 +3,7 @@ from .serializers import ProductSerializer, CategorySerializer, FavoriteSerializ
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet
 from django.core.cache import cache
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
@@ -11,103 +11,62 @@ from rest_framework.decorators import action
 from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
+import logging
 from rest_framework import serializers
-
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError, PermissionDenied
+
+logger = logging.getLogger(__name__)
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     """Custom permission to allow only admin users to create/edit cities."""
 
     def has_permission(self, request, view):
-        # Read permissions for everyone (GET)
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        # Write permissions (POST, PUT, DELETE) only for admin users
-        return request.user and request.user.is_staff
+        return request.method in permissions.SAFE_METHODS or request.user.is_staff
 
-class CityViewSet(viewsets.ModelViewSet):
+
+class CityViewSet(ReadOnlyModelViewSet):
     queryset = City.objects.all()
     serializer_class = CitySerializer
     permission_classes = [IsAdminOrReadOnly]
-    http_method_names = ['get']  # Only allow GET requests (no create/update/delete)
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name', 'region']
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing categories, supporting CRUD operations,
-    search, filtering, ordering, and bulk operations.
-    """
-
+class CategoryViewSet(ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.AllowAny]  # Allow any user for now
-
+    permission_classes = [permissions.AllowAny]
     filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
     filterset_fields = ['name']
     search_fields = ['name']
     ordering_fields = ['name']
 
-    def get_serializer_context(self):
-        return {"request": self.request}  # Ensures URLs are generated correctly
-
-    def get_queryset(self):
-        """
-        Returns categories with caching and optional sorting.
-        """
-        if self.action in ["list", "retrieve"]:  # Only use caching for GET requests
-            sort_by = self.request.query_params.get('sort_by', None)
-
-            # Fetch from cache or DB
-            categories = list(Category.objects.all())  # Ensure it's always a list
-            if sort_by:
-                try:
-                    categories = sorted(categories, key=lambda x: getattr(x, sort_by))
-                except AttributeError:
-                    pass  # Ignore sorting errors
-
-            return Category.objects.filter(id__in=[c.id for c in categories])  # Convert back to queryset
-
-        return super().get_queryset()  # Handle POST, PUT, DELETE properly
-
     def perform_create(self, serializer):
-        serializer.save()  # This ensures the creation of the object
+        serializer.save()
+        cache.delete("categories")
 
     @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
     def bulk_update(self, request):
-        """
-        Updates multiple categories at once.
-        """
         ids = request.data.get('ids', [])
         name = request.data.get('name')
-
         if not ids or not name:
             return Response({"detail": "Please provide valid IDs and a name."}, status=status.HTTP_400_BAD_REQUEST)
-
         categories = Category.objects.filter(id__in=ids)
         if not categories.exists():
             return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
-
         categories.update(name=name)
+        cache.delete("categories")
         return Response({"detail": "Categories updated successfully."}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
+    @action(detail=False, methods=['delete'], permission_classes=[permissions.IsAdminUser])
     def bulk_delete(self, request):
-        """
-        Deletes multiple categories at once.
-        """
         ids = request.data.get('ids', [])
-
         if not ids:
             return Response({"detail": "Please provide IDs to delete."}, status=status.HTTP_400_BAD_REQUEST)
-
         deleted_count, _ = Category.objects.filter(id__in=ids).delete()
-        if deleted_count == 0:
-            return Response({"detail": "No matching categories found."}, status=status.HTTP_404_NOT_FOUND)
-
+        cache.delete("categories")
         return Response({"detail": f"{deleted_count} categories deleted successfully."}, status=status.HTTP_200_OK)
 
 
@@ -117,55 +76,27 @@ class FavoriteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
-    filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['product']
-    search_fields = ['product__name']
-    ordering_fields = ['created_at']
-
-    def get_serializer_context(self):
-        return {"request": self.request}  # Ensures URLs are generated correctly
-
-    def get_queryset(self):
-        """
-        Returns only the authenticated user's favorites.
-        """
-        return Favorite.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        """
-        Handles creation of a favorite product, preventing duplicates.
-        """
-        product_id = self.request.data.get('product_id')
-
+    @action(detail=False, methods=['post'], url_path='add')
+    def add_favorite(self, request, *args, **kwargs):
+        product_id = request.data.get('product_id')
         if not product_id:
-            raise serializers.ValidationError({"error": "Product ID is required."})
+            raise ValidationError({"error": "Product ID is required."})
+        product = Product.objects.filter(id=product_id).first()
+        if not product:
+            raise ValidationError({"error": "Product does not exist."})
+        if Favorite.objects.filter(user=request.user, product=product).exists():
+            raise ValidationError({"error": "Product already favorited."})
+        favorite = Favorite.objects.create(user=request.user, product=product)
+        return Response(FavoriteSerializer(favorite).data, status=status.HTTP_201_CREATED)
 
-        # Ensure product exists
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            raise serializers.ValidationError({"error": "Product does not exist."})
-
-        # Prevent duplicate favorites
-        if Favorite.objects.filter(user=self.request.user, product=product).exists():
-            raise serializers.ValidationError({"error": "Product already favorited."})
-
-        serializer.save(user=self.request.user, product=product)
-    
     @action(detail=True, methods=['DELETE'])
     def remove(self, request, pk=None):
-        """Custom endpoint to remove a product from favorites"""
-        try:
-            favorite = Favorite.objects.get(user=request.user, product_id=pk)
-            favorite.delete()
-            return Response({"message": "Removed from favorites"}, status=status.HTTP_204_NO_CONTENT)
-        except Favorite.DoesNotExist:
+        favorite = Favorite.objects.filter(user=request.user, product_id=pk).first()
+        if not favorite:
             return Response({"error": "Product not in favorites"}, status=status.HTTP_400_BAD_REQUEST)
+        favorite.delete()
+        return Response({"message": "Removed from favorites"}, status=status.HTTP_204_NO_CONTENT)
 
-
-class IsOwner(permissions.BasePermission):
-    def has_object_permission(self, request, view, obj):
-        return obj.owner == request.user
 
 class ProductFilter(django_filters.FilterSet):
     min_price = django_filters.NumberFilter(field_name="price", lookup_expr="gte")
@@ -176,52 +107,51 @@ class ProductFilter(django_filters.FilterSet):
         model = Product
         fields = ['category', 'min_price', 'max_price']
 
+
 class ProductPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+
 class ProductViewSet(ModelViewSet):
-    
     queryset = Product.objects.select_related('category').prefetch_related('images').all()
     serializer_class = ProductSerializer
-    permission_classes = [permissions.IsAuthenticated]  # For general authentication
+    permission_classes = [permissions.IsAuthenticated]
     pagination_class = ProductPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_class = ProductFilter
-    filterset_fields = ['category']
     ordering_fields = ['price', 'created_at']
     ordering = ['-created_at']
     search_fields = ['title', 'description']
 
-    def get_serializer_context(self):
-        return {"request": self.request}
-
     def get_queryset(self):
-        products = cache.get("products")
-        if not products:
-            products = Product.objects.all()  # ✅ Don't convert to list
-            cache.set("products", products, timeout=60 * 5)
-        return products  # ✅ Return QuerySet, not a list
-
+        cached_products = cache.get("products")
+        if cached_products is None:
+            products = list(Product.objects.select_related('category').all().values())
+            cache.set("products", products, timeout=300)
+        else:
+            products = cached_products
+        return Product.objects.filter(id__in=[p['id'] for p in products])
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             serializer.save(seller=self.request.user, owner=self.request.user)
-            cache.delete("products")  # Invalidate cache after creation
+            cache.delete("products")
         else:
-            raise serializer.ValidationError({"error": "Authentication required to create a product."})
+            raise PermissionDenied("Authentication required to create a product.")
 
     def perform_update(self, serializer):
         if self.request.user == serializer.instance.owner:
             serializer.save()
-            cache.delete("products")  # Invalidate cache after update
+            cache.delete("products")
         else:
-            raise serializer.ValidationError({"error": "You are not the owner of this product."})
+            raise PermissionDenied("You are not the owner of this product.")
 
     def perform_destroy(self, instance):
         instance.delete()
-        cache.delete("products")  # Invalidate cache after deletion
+        cache.delete("products")
+
 
 class MyListingsViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
