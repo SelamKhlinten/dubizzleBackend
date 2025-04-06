@@ -12,9 +12,11 @@ from ..user.permissions import IsAdminOrOwner
 from rest_framework import filters
 import django_filters
 import logging
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import serializers
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +37,28 @@ class CityViewSet(ReadOnlyModelViewSet):
 
 
 class CategoryViewSet(ModelViewSet):
+    
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [permissions.AllowAny]
     filter_backends = [OrderingFilter, DjangoFilterBackend, SearchFilter]
     filterset_fields = ['name']
     search_fields = ['name']
     ordering_fields = ['name']
+    parser_classes = [MultiPartParser, FormParser]
 
+    def get_permissions(self):
+        if self.request.method in ['GET']:
+            return [AllowAny()]
+        elif self.request.method in ['POST']:
+            return [IsAdminUser()]  
+        return [IsAuthenticated()]
+    
+    # @csrf_exempt
+    # @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
     def perform_create(self, serializer):
         serializer.save()
         cache.delete("categories")
+       
 
     @action(detail=False, methods=['patch'], permission_classes=[permissions.IsAdminUser])
     def bulk_update(self, request):
