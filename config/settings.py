@@ -66,9 +66,9 @@ INSTALLED_APPS = [
     'core.cart',
     'core.chat',
     'core.notification',
-    'django_extensions',
+    # 'django_extensions',
     'django_filters',
-    'gunicorn',
+    # 'gunicorn',
 ]
 CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000']
 
@@ -83,7 +83,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     
-    'whitenoise.middleware.WhiteNoiseMiddleware', 
+    
 
 ]
 
@@ -159,6 +159,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_THROTTLE_CLASSES': [],
+    'DEFAULT_THROTTLE_RATES': {},
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
 }
 
 # JWT settings
@@ -174,23 +180,24 @@ LOGGING = {
     'disable_existing_loggers': False,
     'handlers': {
         'console': {
-            'level': 'DEBUG',  # Increase verbosity
+            'level': 'INFO', 
             'class': 'logging.StreamHandler',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO', 
             'propagate': True,
         },
-        'django.request': {  # Log request details
+        'django.request': {  
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',  
             'propagate': False,
         },
     },
 }
+
 
 
 
